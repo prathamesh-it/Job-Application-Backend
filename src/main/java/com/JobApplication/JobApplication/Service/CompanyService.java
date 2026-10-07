@@ -3,6 +3,7 @@ package com.JobApplication.JobApplication.Service;
 import com.JobApplication.JobApplication.DTOs.CompanyRequest;
 import com.JobApplication.JobApplication.DTOs.CompanyResponse;
 import com.JobApplication.JobApplication.Entity.Company;
+import com.JobApplication.JobApplication.Exceptions.CompanyNotFoundException;
 import com.JobApplication.JobApplication.Mappers.CompanyMapper;
 import com.JobApplication.JobApplication.Repository.CompanyRepository;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CompanyService
@@ -43,10 +45,15 @@ public class CompanyService
 
     public CompanyResponse getCompanyById(long id)
     {
-        Company company = companyRepository.findById(id)
-                .orElseThrow(()->new RuntimeException("Company not found with id: " + id));
-                             
-        return companyMapper.toResponse(company);
+        Optional<Company> company = companyRepository.findById(id);
+        if(company.isPresent())
+        {
+            return companyMapper.toResponse(company.get());
+        }
+        else
+        {
+            throw new CompanyNotFoundException("Company with id: " + id + " not found");
+        }
     }
 
 

@@ -3,6 +3,9 @@ package com.JobApplication.JobApplication.Service;
 import com.JobApplication.JobApplication.DTOs.UserRequest;
 import com.JobApplication.JobApplication.DTOs.UserResponse;
 import com.JobApplication.JobApplication.Entity.User;
+import com.JobApplication.JobApplication.Exceptions.EmailAlreadyExistException;
+import com.JobApplication.JobApplication.Exceptions.ResourceNotFound;
+import com.JobApplication.JobApplication.Exceptions.UserNotFoundException;
 import com.JobApplication.JobApplication.Mappers.UserMapper;
 import com.JobApplication.JobApplication.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 
 @Service
@@ -42,6 +47,10 @@ public class UserService
 
     public UserResponse addUser(UserRequest userRequest)
     {
+        if(userRepository.existsByEmail(userRequest.getEmail()))
+        {
+            throw new EmailAlreadyExistException("Email already exists: " + userRequest.getEmail());
+        }
         return userMapper.toResponse(
                 userRepository.save(
                         userMapper.toEntity(userRequest)
@@ -51,10 +60,16 @@ public class UserService
 
     public UserResponse getUserById(long id)
     {
-        return userMapper.toResponse(
-                userRepository.findById(id)
-                        .orElseThrow(() -> new RuntimeException("User not found with id: " + id))
-        );
+        Optional<User> user = userRepository.findById(id);
+        if(user.isPresent())
+        {
+            return userMapper.toResponse(user.get());
+        }
+        else
+        {
+            throw new UserNotFoundException("User not found");
+        }
+
     }
 
     public UserResponse updateUserById(long id , UserRequest userRequest)

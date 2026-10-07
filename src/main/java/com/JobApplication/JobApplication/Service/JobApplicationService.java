@@ -5,6 +5,7 @@ import com.JobApplication.JobApplication.DTOs.JobApplicationResponse;
 import com.JobApplication.JobApplication.Entity.Company;
 import com.JobApplication.JobApplication.Entity.JobApplication;
 import com.JobApplication.JobApplication.Entity.User;
+import com.JobApplication.JobApplication.Exceptions.JobApplicationNotFoundException;
 import com.JobApplication.JobApplication.Mappers.JobApplicationMapper;
 import com.JobApplication.JobApplication.Repository.CompanyRepository;
 import com.JobApplication.JobApplication.Repository.JobApplicationRepository;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class JobApplicationService
@@ -70,11 +72,16 @@ public class JobApplicationService
 
     public JobApplicationResponse getJobApplicationById(long id)
     {
-        JobApplication jobApplication = jobApplicationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("JobApplication with this id not found"));
+        Optional<JobApplication> jobApplication = jobApplicationRepository.findById(id);
+        if(jobApplication.isPresent())
+        {
+            return jobApplicationMapper.toResponse(jobApplication.get());
+        }
+        else
+        {
+            throw new JobApplicationNotFoundException("JobApplication with id: " + id + " not found");
+        }
 
-
-        return jobApplicationMapper.toResponse(jobApplication);
     }
 
     public String deleteApplicationById(long id)
