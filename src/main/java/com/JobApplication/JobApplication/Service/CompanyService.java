@@ -6,6 +6,7 @@ import com.JobApplication.JobApplication.Entity.Company;
 import com.JobApplication.JobApplication.Exceptions.CompanyNotFoundException;
 import com.JobApplication.JobApplication.Mappers.CompanyMapper;
 import com.JobApplication.JobApplication.Repository.CompanyRepository;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -57,6 +58,7 @@ public class CompanyService
     }
 
 
+    @Transactional
     public CompanyResponse updateCompanyById(long id, CompanyRequest companyRequest)
     {
         Company company = companyRepository.findById(id)

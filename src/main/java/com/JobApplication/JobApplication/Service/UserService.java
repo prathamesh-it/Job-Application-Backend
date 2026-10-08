@@ -8,6 +8,7 @@ import com.JobApplication.JobApplication.Exceptions.ResourceNotFound;
 import com.JobApplication.JobApplication.Exceptions.UserNotFoundException;
 import com.JobApplication.JobApplication.Mappers.UserMapper;
 import com.JobApplication.JobApplication.Repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -72,6 +73,7 @@ public class UserService
 
     }
 
+    @Transactional
     public UserResponse updateUserById(long id , UserRequest userRequest)
     {
         User user = userRepository.findById(id)
