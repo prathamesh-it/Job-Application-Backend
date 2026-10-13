@@ -48,5 +48,4 @@ public class JobApplicationMapper
         return jobApplicationResponse;
     }
 
-
 }

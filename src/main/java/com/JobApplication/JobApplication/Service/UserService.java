@@ -4,7 +4,6 @@ import com.JobApplication.JobApplication.DTOs.UserRequest;
 import com.JobApplication.JobApplication.DTOs.UserResponse;
 import com.JobApplication.JobApplication.Entity.User;
 import com.JobApplication.JobApplication.Exceptions.EmailAlreadyExistException;
-import com.JobApplication.JobApplication.Exceptions.ResourceNotFound;
 import com.JobApplication.JobApplication.Exceptions.UserNotFoundException;
 import com.JobApplication.JobApplication.Mappers.UserMapper;
 import com.JobApplication.JobApplication.Repository.UserRepository;
@@ -91,6 +90,7 @@ public class UserService
 
     public String deleteUserById(long id)
     {
+
         if(userRepository.existsById(id))
         {
             userRepository.deleteById(id);

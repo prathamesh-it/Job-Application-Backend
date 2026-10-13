@@ -20,15 +20,16 @@ public class User
 
     private String name;
 
+
     private String email;
 
     private String password;
+
+    private String role = "USER";
 
     private String phone;
 
     @OneToMany(mappedBy = "user" , cascade = CascadeType.ALL)
     private List<JobApplication> applications;
-
-
 
 }
