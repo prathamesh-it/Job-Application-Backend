@@ -375,5 +375,5 @@ Errors are returned as JSON through a global exception handler.
 
 **Prathamesh Nistane**
 
-- GitHub: [github.com/your-username](https://www.linkedin.com/in/prathamesh-nistane/)
-- LinkedIn: [linkedin.com/in/your-profile](https://github.com/prathamesh-it)
+- GitHub: [https://github.com/prathamesh-it](https://www.linkedin.com/in/prathamesh-nistane/)
+- LinkedIn: [https://www.linkedin.com/in/prathamesh-nistane/](https://github.com/prathamesh-it)
