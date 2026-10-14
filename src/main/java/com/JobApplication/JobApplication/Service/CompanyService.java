@@ -3,19 +3,20 @@ package com.JobApplication.JobApplication.Service;
 import com.JobApplication.JobApplication.DTOs.CompanyRequest;
 import com.JobApplication.JobApplication.DTOs.CompanyResponse;
 import com.JobApplication.JobApplication.Entity.Company;
+import com.JobApplication.JobApplication.Enum.Role;
 import com.JobApplication.JobApplication.Exceptions.CompanyNotFoundException;
 import com.JobApplication.JobApplication.Mappers.CompanyMapper;
 import com.JobApplication.JobApplication.Repository.CompanyRepository;
+import com.JobApplication.JobApplication.Repository.UserRepository;
+import com.JobApplication.JobApplication.Security.CustomUserDetails;
 import jakarta.transaction.Transactional;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -27,13 +28,14 @@ public class CompanyService
     @Autowired
     private CompanyMapper companyMapper;
 
-    public CompanyResponse addCompany(@Valid CompanyRequest companyRequest)
+    @Autowired
+    private UserRepository userRepository;
+
+    public CompanyResponse addCompany( CompanyRequest companyRequest, CustomUserDetails currentUser)
     {
-         return companyMapper.toResponse(
-                 companyRepository.save(
-                         companyMapper.toEntity(companyRequest)
-                 )
-         );
+         Company company = companyMapper.toEntity(companyRequest);
+         company.setCreatedBy(userRepository.getReferenceById(currentUser.getId()));//jpa return proxy instead of entire entity
+        return companyMapper.toResponse(companyRepository.save(company));
     }
 
 
@@ -59,10 +61,17 @@ public class CompanyService
 
 
     @Transactional
-    public CompanyResponse updateCompanyById(long id, CompanyRequest companyRequest)
+    public CompanyResponse updateCompanyById(long id, CompanyRequest companyRequest, CustomUserDetails currentUser)
     {
         Company company = companyRepository.findById(id)
                 .orElseThrow(() ->  new RuntimeException("Company with "+id +"  id not found"));
+
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+
+        if(!isOwner(company , currentUser) && !isAdmin)   //owner pn nahi ahe admin pn nahi
+        {
+                throw new AccessDeniedException("Only the owner of Admin can delete this company");
+        }
 
         company.setName(companyRequest.getName());
         company.setLocation(companyRequest.getLocation());
@@ -73,15 +82,27 @@ public class CompanyService
         );
     }
 
-    public String deleteCompanyById(long id)
+    private boolean isOwner(Company company, CustomUserDetails currentUser)
     {
-        if(companyRepository.existsById(id)) {
-            companyRepository.deleteById(id);
-            return "Company deleted Sucessfully";
+        return company.getCreatedBy() != null &&
+                company.getCreatedBy().getId().equals(currentUser.getId());
+    }
+
+    @Transactional
+    public String deleteCompanyById(long id, CustomUserDetails currentUser)
+    {
+        Company company = companyRepository.findById(id)
+                .orElseThrow(() -> new CompanyNotFoundException("Comapny with id: "+id+" does not exist"));
+
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+
+        if (!isOwner(company, currentUser) && !isAdmin)
+        {
+            throw new AccessDeniedException("Only the owner or an admin can delete this company");
         }
-        else {
-            throw new RuntimeException("Company with id: " + id + " not found");
-        }
+
+        companyRepository.delete(company);// aslo delete all the application associated to it
+        return "Company with id: "+id+" deleted successfully";
 
     }
 }

@@ -66,6 +66,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         }
         catch (JwtException | UsernameNotFoundException | UserNotFoundException ex)
         {
+            System.out.println("JWT REJECTED: " + ex.getClass().getSimpleName() + " - " + ex.getMessage());
             //bad token or deleted user : leave unauthenticated , security return 401
         }
         filterChain.doFilter(request,response);

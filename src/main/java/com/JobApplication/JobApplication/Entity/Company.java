@@ -23,6 +23,10 @@ public class Company
 
     private String location;
 
-    @OneToMany(mappedBy = "company")
+    @ManyToOne
+    @JoinColumn(name = "created_by")
+    private User createdBy;
+
+    @OneToMany(mappedBy = "company" , cascade = CascadeType.ALL)
     private List<JobApplication> applications;
 }

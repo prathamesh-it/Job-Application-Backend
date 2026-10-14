@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -17,6 +18,7 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityCofig
 {
     @Autowired
@@ -44,7 +46,7 @@ public class SecurityCofig
                 .sessionManagement(s ->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/users/register").permitAll()  //give access without login to registration end point
-                        .requestMatchers("/api/v1/users/login").permitAll()     //give access without login to login end point
+                        .requestMatchers("/api/v1/users/login" , "/error").permitAll()     //give access without login to login end point
                         .anyRequest().authenticated()   //authentication for other request
                 )
                 .exceptionHandling( e -> e

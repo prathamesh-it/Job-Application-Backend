@@ -3,10 +3,12 @@ package com.JobApplication.JobApplication.Controllers;
 import com.JobApplication.JobApplication.DTOs.CompanyRequest;
 import com.JobApplication.JobApplication.DTOs.CompanyResponse;
 import com.JobApplication.JobApplication.Entity.Company;
+import com.JobApplication.JobApplication.Security.CustomUserDetails;
 import com.JobApplication.JobApplication.Service.CompanyService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,10 +21,11 @@ public class CompanyController
     private CompanyService companyService;
 
     @PostMapping
-    public CompanyResponse addCompany(@Valid @RequestBody CompanyRequest companyRequest)
+    public CompanyResponse addCompany(@Valid @RequestBody CompanyRequest companyRequest ,
+                                      @AuthenticationPrincipal CustomUserDetails currentUser)
     {
         System.out.println("CompanyController: addCompany called with request: " + companyRequest);
-        return companyService.addCompany(companyRequest);
+        return companyService.addCompany(companyRequest , currentUser);
     }
 
     @GetMapping
@@ -42,16 +45,18 @@ public class CompanyController
 
     @PutMapping("/{id}")
     public CompanyResponse updateCompanyById(@PathVariable long id,
-                                             @Valid @RequestBody CompanyRequest companyRequest)
+                                             @Valid @RequestBody CompanyRequest companyRequest,
+                                             @AuthenticationPrincipal CustomUserDetails currentUser)
     {
         System.out.println("Updating company with id: "+id);
-        return companyService.updateCompanyById(id , companyRequest);
+        return companyService.updateCompanyById(id , companyRequest , currentUser);
     }
 
     @DeleteMapping("/{id}")
-    public String deleteCompanyById(@PathVariable long id)
+    public String deleteCompanyById(@PathVariable long id,
+                                    @AuthenticationPrincipal CustomUserDetails currentUser)
     {
-        return companyService.deleteCompanyById(id);
+        return companyService.deleteCompanyById(id , currentUser);
     }
 
 

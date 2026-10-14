@@ -3,15 +3,20 @@ package com.JobApplication.JobApplication.Service;
 import com.JobApplication.JobApplication.DTOs.UserRequest;
 import com.JobApplication.JobApplication.DTOs.UserResponse;
 import com.JobApplication.JobApplication.Entity.User;
+import com.JobApplication.JobApplication.Enum.Role;
 import com.JobApplication.JobApplication.Exceptions.EmailAlreadyExistException;
 import com.JobApplication.JobApplication.Exceptions.UserNotFoundException;
 import com.JobApplication.JobApplication.Mappers.UserMapper;
+import com.JobApplication.JobApplication.Repository.CompanyRepository;
 import com.JobApplication.JobApplication.Repository.UserRepository;
+import com.JobApplication.JobApplication.Security.CustomUserDetails;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -25,6 +30,12 @@ public class UserService
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private CompanyRepository companyRepository;
     
     public Page<UserResponse> getAllUsers(int page , int size)
     {
@@ -73,33 +84,49 @@ public class UserService
     }
 
     @Transactional
-    public UserResponse updateUserById(long id , UserRequest userRequest)
+    public UserResponse updateUserById(long id , UserRequest userRequest, CustomUserDetails currentUser)
     {
+        if(!currentUser.getId().equals(id))
+        {
+            throw new AccessDeniedException("You can update only your own account");
+        }
+
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
+
+        if(!user.getEmail().equals(userRequest.getEmail()) && userRepository.existsByEmail(userRequest.getEmail()))
+        {
+            throw new EmailAlreadyExistException("Email already exists: " + userRequest.getEmail());
+        }
 
         user.setName(userRequest.getName());
         user.setEmail(userRequest.getEmail());
         user.setPhone(userRequest.getPhone());
-        user.setPassword(userRequest.getPassword());
+        user.setPassword(passwordEncoder.encode(userRequest.getPassword()));
 
         return userMapper.toResponse(
                 userRepository.save(user)
         );
     }
 
-    public String deleteUserById(long id)
+    @Transactional
+    public String deleteUserById(long id, CustomUserDetails currentUser)
     {
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN;
 
-        if(userRepository.existsById(id))
+        if(!isAdmin && !currentUser.getId().equals(id))
         {
-            userRepository.deleteById(id);
-            return "User deleted succesfully";
+            throw new AccessDeniedException("You can delete only your own account");
         }
-        else
-        {
-            throw new RuntimeException(("User with id :"+id+" not exist"));
-        }
+
+       if(!userRepository.existsById(id))
+       {
+           throw new UserNotFoundException("User not found with id: " + id);
+       }
+
+        companyRepository.clearOwner(id);   // must come before deleteById
+        userRepository.deleteById(id);
+        return "User deleted successfully";
 
     }
 }

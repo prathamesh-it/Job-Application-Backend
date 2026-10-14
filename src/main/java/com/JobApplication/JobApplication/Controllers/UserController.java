@@ -2,11 +2,13 @@ package com.JobApplication.JobApplication.Controllers;
 
 import com.JobApplication.JobApplication.DTOs.UserRequest;
 import com.JobApplication.JobApplication.DTOs.UserResponse;
+import com.JobApplication.JobApplication.Security.CustomUserDetails;
 import com.JobApplication.JobApplication.Service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,17 +43,19 @@ public class UserController
     }
 
     @PutMapping("/users/{id}")
-    public UserResponse updateUserById(@Valid @PathVariable long id ,@Valid @RequestBody UserRequest userRequest)
+    public UserResponse updateUserById(@PathVariable long id ,
+                                       @Valid @RequestBody UserRequest userRequest,
+                                       @AuthenticationPrincipal CustomUserDetails currentUser)
     {
         System.out.println("Updating user by id: " + id);
-        return userService.updateUserById(id , userRequest);
+        return userService.updateUserById(id , userRequest , currentUser);
     }
 
     @DeleteMapping("/users/{id}")
-    public String deleteUserById(@PathVariable long id)
-    {
+    public String deleteUserById(@PathVariable long id,
+                                 @AuthenticationPrincipal CustomUserDetails currentUser) {
         System.out.println("Deleting user by id: " + id);
-        return userService.deleteUserById(id);
+        return userService.deleteUserById(id, currentUser);
     }
 
 }

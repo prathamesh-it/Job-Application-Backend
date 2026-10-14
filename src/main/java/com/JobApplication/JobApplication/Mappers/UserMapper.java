@@ -15,7 +15,6 @@ public class UserMapper
         user.setEmail(userRequest.getEmail());
         user.setPhone(userRequest.getPhone());
         user.setPassword(userRequest.getPassword());
-        user.setRole(userRequest.getRole());
         return user;
     }
 

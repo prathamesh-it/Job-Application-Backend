@@ -29,10 +29,6 @@ public class JobApplicationRequest
     @Positive(message = "Salary must be a positive number")
     private BigDecimal salary;
 
-    @NotNull(message = "User ID is mandatory")
-    @Positive(message = "User ID must be a positive number")
-    private Long userId;
-
     @NotNull(message = "Company ID is mandatory")
     @Positive(message = "Company Id must be a positive number")
     private Long companyId;

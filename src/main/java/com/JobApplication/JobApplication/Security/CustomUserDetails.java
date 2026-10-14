@@ -1,8 +1,10 @@
 package com.JobApplication.JobApplication.Security;
 
 import com.JobApplication.JobApplication.Entity.User;
+import com.JobApplication.JobApplication.Enum.Role;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
@@ -22,19 +24,19 @@ public class CustomUserDetails implements UserDetails
     }
 
     //ADDED THIS TWO GETTERS FOR JWT SERVICE
-    public Long getID()
+    public Long getId()
     {
         return user.getId();
     }
 
-    public String getRole() {
+    public Role getRole() {
         return user.getRole();
     }
 
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(() -> user.getRole());
+        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
     }
 
     @Override
@@ -47,6 +49,7 @@ public class CustomUserDetails implements UserDetails
     public String getUsername() {
         return user.getEmail();
     }
+
 
 }
 

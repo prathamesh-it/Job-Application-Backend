@@ -4,6 +4,7 @@ import com.JobApplication.JobApplication.DTOs.LoginRequestDTO;
 import com.JobApplication.JobApplication.DTOs.LoginResponse;
 import com.JobApplication.JobApplication.DTOs.UserRequest;
 import com.JobApplication.JobApplication.Entity.User;
+import com.JobApplication.JobApplication.Enum.Role;
 import com.JobApplication.JobApplication.Mappers.UserMapper;
 import com.JobApplication.JobApplication.Repository.UserRepository;
 import com.JobApplication.JobApplication.Security.CustomUserDetails;
@@ -58,7 +59,7 @@ public class AuthService
         user.setPassword(passwordEncoder.encode(requestDTO.getPassword())); // Encode the password before saving
 
         user.setPhone(requestDTO.getPhone());
-        user.setRole("USER");
+        user.setRole(Role.USER);
 
         userRepository.save(user);
         return ResponseEntity

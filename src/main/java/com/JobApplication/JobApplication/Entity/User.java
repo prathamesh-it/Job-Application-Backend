@@ -1,5 +1,6 @@
 package com.JobApplication.JobApplication.Entity;
 
+import com.JobApplication.JobApplication.Enum.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -20,12 +21,14 @@ public class User
 
     private String name;
 
-
+    @Column(unique = true,nullable = false)
     private String email;
 
     private String password;
 
-    private String role = "USER";
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.USER;
 
     private String phone;
 

@@ -30,8 +30,8 @@ public class JwtService
     {
         return Jwts.builder()
                 .subject(user.getUsername())   //email
-                .claim("userId" , user.getID())
-                .claim("role" , user.getRole())
+                .claim("userId" , user.getId())
+                .claim("role" , user.getRole().name())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(getKey())

@@ -28,6 +28,7 @@ public class CompanyMapper
         companyResponse.setName(company.getName());
         companyResponse.setLocation(company.getLocation());
         companyResponse.setWebsite(company.getWebsite());
+        companyResponse.setCreatedById(company.getCreatedBy() != null ? company.getCreatedBy().getId() : null);
 
         return companyResponse;
     }

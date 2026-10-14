@@ -9,6 +9,8 @@ public class CompanyResponse
 
     private String name;
 
+    private Long createdById;
+
     private String location;
 
     private String website;

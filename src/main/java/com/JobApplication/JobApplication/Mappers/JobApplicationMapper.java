@@ -22,7 +22,11 @@ public class JobApplicationMapper
         else {
             jobApplication.setApplicationDate(LocalDate.now());
         }
-        jobApplication.setStatus(jobApplicationRequest.getStatus());
+
+        if(jobApplicationRequest.getStatus() != null)
+        {
+            jobApplication.setStatus(jobApplicationRequest.getStatus());
+        }
         jobApplication.setJobUrl(jobApplicationRequest.getJobUrl());
         jobApplication.setSalary(jobApplicationRequest.getSalary());
         jobApplication.setNotes(jobApplicationRequest.getNotes());

@@ -1,12 +1,12 @@
 package com.JobApplication.JobApplication.Service;
 
-import com.JobApplication.JobApplication.DTOs.CompanyResponse;
 import com.JobApplication.JobApplication.DTOs.JobApplicationRequest;
 import com.JobApplication.JobApplication.DTOs.JobApplicationResponse;
 import com.JobApplication.JobApplication.Entity.Company;
 import com.JobApplication.JobApplication.Entity.JobApplication;
 import com.JobApplication.JobApplication.Entity.User;
 import com.JobApplication.JobApplication.Enum.ApplicationType;
+import com.JobApplication.JobApplication.Enum.Role;
 import com.JobApplication.JobApplication.Exceptions.CompanyNotFoundException;
 import com.JobApplication.JobApplication.Exceptions.JobApplicationNotFoundByPositionException;
 import com.JobApplication.JobApplication.Exceptions.JobApplicationNotFoundException;
@@ -15,13 +15,14 @@ import com.JobApplication.JobApplication.Mappers.JobApplicationMapper;
 import com.JobApplication.JobApplication.Repository.CompanyRepository;
 import com.JobApplication.JobApplication.Repository.JobApplicationRepository;
 import com.JobApplication.JobApplication.Repository.UserRepository;
+import com.JobApplication.JobApplication.Security.CustomUserDetails;
 import jakarta.transaction.Transactional;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -30,8 +31,8 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class JobApplicationService
-{
+public class JobApplicationService {
+
     @Autowired
     private JobApplicationRepository jobApplicationRepository;
 
@@ -44,193 +45,136 @@ public class JobApplicationService
     @Autowired
     private CompanyRepository companyRepository;
 
-    public JobApplicationResponse addJobApplication(JobApplicationRequest jobApplicationRequest)
+    private boolean isAdmin(CustomUserDetails u)
     {
-        //CONVERT DTO TO ENTITY
-        JobApplication jobApplication =
-                jobApplicationMapper.toEntity(jobApplicationRequest
-                );
-
-        //Find the user using user id
-        User user = userRepository.findById(jobApplicationRequest.getUserId())
-                .orElseThrow(()->new RuntimeException("User with id :"+jobApplicationRequest.getUserId()+ "not found"));
-
-        //Find the company with company id
-
-        Company company = companyRepository.findById(jobApplicationRequest.getCompanyId())
-                .orElseThrow(() -> new RuntimeException("Company with id :"+jobApplicationRequest.getCompanyId()+"does not exist"));
-
-
-
-        //SET RELATIONSHIPS
-        jobApplication.setUser(user);
-        jobApplication.setCompany(company);
-
-        //SAVE HERE
-        JobApplication savedJobApplication = jobApplicationRepository.save(jobApplication);
-
-        return jobApplicationMapper.toResponse(savedJobApplication);
+        return u.getRole() == Role.ADMIN;
     }
 
-    public Page<JobApplicationResponse> getAllJobApplications(int page , int size , String sortBy , String direction)
+    // adminAllowed = true mhanje ADMIN pan access karu shakto (view/delete), false mhanje fakt owner (edit)
+    private JobApplication getAccessible(long id, CustomUserDetails currentUser,
+                                         boolean adminAllowed)
     {
-        Sort sort;
+        JobApplication app = jobApplicationRepository.findById(id)
+                .orElseThrow(() -> new JobApplicationNotFoundException("JobApplication with id: " + id + " not found"));
 
-        if(direction.equalsIgnoreCase("asc"))
-        {
-             sort = Sort.by(sortBy).ascending();
+        boolean owner = app.getUser().getId().equals(currentUser.getId());
+        boolean admin = adminAllowed && isAdmin(currentUser);
+
+        if (!owner && !admin) {
+            throw new AccessDeniedException("This is not your job application");
         }
-        else
-        {
-            sort = Sort.by(sortBy).descending();
-        }
-        Pageable pageable = PageRequest.of(page,size,sort);
-        return jobApplicationRepository.findAll(pageable)
-                .map(jobApplicationMapper::toResponse);
+        return app;
     }
 
-    public JobApplicationResponse getJobApplicationById(long id)
+    private List<JobApplicationResponse> toResponses(List<JobApplication> list,
+                                                     RuntimeException ifEmpty)
     {
-        Optional<JobApplication> jobApplication = jobApplicationRepository.findById(id);
-        if(jobApplication.isPresent())
-        {
-            return jobApplicationMapper.toResponse(jobApplication.get());
-        }
-        else
-        {
-            throw new JobApplicationNotFoundException("JobApplication with id: " + id + " not found");
-        }
-
+        if (list.isEmpty()) throw ifEmpty;
+        return list.stream().map(jobApplicationMapper::toResponse).toList();
     }
 
-    @Transactional
-    public JobApplicationResponse updateJobApplication(long id,  JobApplicationRequest jobApplicationRequest)
+    public JobApplicationResponse addJobApplication(JobApplicationRequest req,
+                                                    CustomUserDetails currentUser)
     {
-        //Find the user using user id
-        User user = userRepository.findById(jobApplicationRequest.getUserId())
-                .orElseThrow(()->new UserNotFoundException("User with id :"+jobApplicationRequest.getUserId()+ "not found"));
+        JobApplication app = jobApplicationMapper.toEntity(req);
 
-        //Find the company with company id
+        Company company = companyRepository.findById(req.getCompanyId())
+                .orElseThrow(() -> new CompanyNotFoundException("Company with id: " + req.getCompanyId() + " does not exist"));
 
-        Company company = companyRepository.findById(jobApplicationRequest.getCompanyId())
-                .orElseThrow(() -> new CompanyNotFoundException("Company with id :"+jobApplicationRequest.getCompanyId()+"does not exist"));
+        app.setUser(userRepository.getReferenceById(currentUser.getId()));   // owner token madhun
+        app.setCompany(company);
 
-        Optional<JobApplication> jobApplication = jobApplicationRepository.findById(id);
-
-        JobApplication existingJobApplication = jobApplication.get();
-
-        if(jobApplication.isPresent())
-        {
-            existingJobApplication.setApplicationDate(jobApplicationRequest.getApplicationDate());
-            existingJobApplication.setPosition(jobApplicationRequest.getPosition());
-            existingJobApplication.setSalary(jobApplicationRequest.getSalary());
-            if(jobApplicationRequest.getStatus() != null)
-            {
-                existingJobApplication.setStatus(jobApplicationRequest.getStatus());
-            }
-            else
-            {
-                existingJobApplication.setStatus(existingJobApplication.getStatus());
-            }
-            existingJobApplication.setJobUrl(jobApplicationRequest.getJobUrl());
-            existingJobApplication.setNotes(jobApplicationRequest.getNotes());
-            existingJobApplication.setUser(user);
-            existingJobApplication.setCompany(company);
-
-        }
-        return jobApplicationMapper.toResponse(jobApplicationRepository.save(existingJobApplication));
-
+        return jobApplicationMapper.toResponse(jobApplicationRepository.save(app));
     }
 
-    public String deleteApplicationById(long id)
+    public Page<JobApplicationResponse> getAllJobApplications(int page, int size,
+                                                              String sortBy,
+                                                              String direction,
+                                                              CustomUserDetails currentUser)
     {
-        Optional<JobApplication> jobApplication = jobApplicationRepository.findById(id);
-        if(jobApplication.isPresent())
-        {
-            jobApplicationRepository.deleteById(id);
-            return "JobApplication with id: " + id + " deleted successfully";
-        }
-        else
-        {
-            throw new JobApplicationNotFoundException("JobApplication with id: " + id + " not found");
-        }
+        Sort sort = direction.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<JobApplication> result = isAdmin(currentUser)
+                ? jobApplicationRepository.findAll(pageable)
+                : jobApplicationRepository.findByUserId(currentUser.getId(), pageable);
+
+        return result.map(jobApplicationMapper::toResponse);
     }
 
-    public List<JobApplicationResponse> getApplicationsByStatus(ApplicationType status)
+    public JobApplicationResponse getJobApplicationById(long id,
+                                                        CustomUserDetails currentUser)
     {
-        List<JobApplication> jobApplications = jobApplicationRepository.findByStatus(status);
-        if(jobApplications.isEmpty())
-        {
-            throw new JobApplicationNotFoundException("No JobApplications found with status: " + status);
-        }
-        List<JobApplicationResponse> jobApplicationResponses = new ArrayList<>();
-        for(JobApplication jobApplication : jobApplications) {
-            jobApplicationResponses.add(jobApplicationMapper.toResponse(jobApplication));
-        }
-        return jobApplicationResponses;
+        return jobApplicationMapper.toResponse(getAccessible(id, currentUser, true));
     }
 
     @Transactional
-    public List<JobApplicationResponse> getApplicationsByCompanyId( long companyId)
+    public JobApplicationResponse updateJobApplication(long id, JobApplicationRequest req,
+                                                       CustomUserDetails currentUser)
     {
-        Optional<Company> company = companyRepository.findById(companyId);
+        JobApplication existing = getAccessible(id, currentUser, false);   // fakt owner
 
-        if(!company.isPresent())
-        {
+        Company company = companyRepository.findById(req.getCompanyId())
+                .orElseThrow(() -> new CompanyNotFoundException("Company with id: " + req.getCompanyId() + " does not exist"));
+
+        existing.setCompany(company);
+        existing.setPosition(req.getPosition());
+        existing.setSalary(req.getSalary());
+        existing.setJobUrl(req.getJobUrl());
+        existing.setNotes(req.getNotes());
+        if (req.getApplicationDate() != null) existing.setApplicationDate(req.getApplicationDate());
+        if (req.getStatus() != null) existing.setStatus(req.getStatus());
+        // user badalat nahi, owner fixed rahto
+
+        return jobApplicationMapper.toResponse(jobApplicationRepository.save(existing));
+    }
+
+    public String deleteApplicationById(long id,
+                                        CustomUserDetails currentUser)
+    {
+        JobApplication app = getAccessible(id, currentUser, true);   // owner kivha admin
+        jobApplicationRepository.delete(app);
+        return "JobApplication with id: " + id + " deleted successfully";
+    }
+
+    public List<JobApplicationResponse> getApplicationsByStatus(ApplicationType status,
+                                                                CustomUserDetails currentUser)
+    {
+        List<JobApplication> list = isAdmin(currentUser)
+                ? jobApplicationRepository.findByStatus(status)
+                : jobApplicationRepository.findByUserIdAndStatus(currentUser.getId(), status);
+        return toResponses(list, new JobApplicationNotFoundException("No JobApplications found with status: " + status));
+    }
+
+    public List<JobApplicationResponse> getApplicationsByCompanyId(long companyId,
+                                                                   CustomUserDetails currentUser)
+    {
+        if (!companyRepository.existsById(companyId)) {
             throw new CompanyNotFoundException("Company with id: " + companyId + " not found");
         }
-
-        List<JobApplication> jobApplications = jobApplicationRepository.findJobApplicationByCompanyId(companyId);
-
-        if(jobApplications.isEmpty())
-        {
-            throw new JobApplicationNotFoundException("No JobApplications found for company with id: " + companyId);
-        }
-
-        List<JobApplicationResponse> jobApplicationResponses = new ArrayList<>();
-        for(JobApplication jobApplication : jobApplications)
-        {
-            jobApplicationResponses.add(jobApplicationMapper.toResponse(jobApplication));
-        }
-
-        return jobApplicationResponses;
-
-
+        List<JobApplication> list = isAdmin(currentUser)
+                ? jobApplicationRepository.findJobApplicationByCompanyId(companyId)
+                : jobApplicationRepository.findByUserIdAndCompanyId(currentUser.getId(), companyId);
+        return toResponses(list, new JobApplicationNotFoundException("No JobApplications found for company with id: " + companyId));
     }
 
-    public List<JobApplicationResponse> getApplicationsByPosition(String position)
+    public List<JobApplicationResponse> getApplicationsByPosition(String position,
+                                                                  CustomUserDetails currentUser)
     {
-        List<JobApplication> jobApplications = jobApplicationRepository.findByPositionContainingIgnoreCase(position);
-
-        if(jobApplications.isEmpty())
-        {
-            throw new JobApplicationNotFoundByPositionException("No JobApplications found for position: " + position);
-        }
-
-        List<JobApplicationResponse> jobApplicationResponses = new ArrayList<>();
-        for(JobApplication jobApplication : jobApplications)
-        {
-            jobApplicationResponses.add(jobApplicationMapper.toResponse(jobApplication));
-        }
-        return jobApplicationResponses;
+        List<JobApplication> list = isAdmin(currentUser)
+                ? jobApplicationRepository.findByPositionContainingIgnoreCase(position)
+                : jobApplicationRepository.findByUserIdAndPositionContainingIgnoreCase(currentUser.getId(), position);
+        return toResponses(list, new JobApplicationNotFoundByPositionException("No JobApplications found for position: " + position));
     }
 
-    public List<JobApplicationResponse> getApplicationsBySalary(BigDecimal minSalary, BigDecimal maxSalary)
+    public List<JobApplicationResponse> getApplicationsBySalary(BigDecimal min,
+                                                                BigDecimal max,
+                                                                CustomUserDetails currentUser)
     {
-        List<JobApplication> jobApplications = jobApplicationRepository.findBySalaryBetween(minSalary , maxSalary);
-
-        if(jobApplications.isEmpty())
-        {
-            throw new JobApplicationNotFoundException("No JobApplications found betweem salary : " + minSalary + " and " + maxSalary);
-        }
-
-        List<JobApplicationResponse> jobApplicationResponses = new ArrayList<>();
-        for(JobApplication jobApplication : jobApplications)
-        {
-            jobApplicationResponses.add(jobApplicationMapper.toResponse(jobApplication));
-        }
-        return jobApplicationResponses;
+        List<JobApplication> list = isAdmin(currentUser)
+                ? jobApplicationRepository.findBySalaryBetween(min, max)
+                : jobApplicationRepository.findByUserIdAndSalaryBetween(currentUser.getId(), min, max);
+        return toResponses(list, new JobApplicationNotFoundException("No JobApplications found between salary: " + min + " and " + max));
     }
-
-
 }
